@@ -47,7 +47,7 @@ public class Aeropuerto {
 		this.ChekingDePasajeros = 0;
 		this.ControlDePasajeros = 0;
 		this.EmbarqueDePasajeros = 0;
-		this.ChekingDePasajeros = 0;
+		this.ControlDeTripulacion = 0;
 		this.EmbarqueDeTripulacion = 0;
 		
 		// inicializo los mutex
@@ -81,12 +81,12 @@ public class Aeropuerto {
 	//Método que permitirá al pasajero intentar acceder al hall del aeropuerto.
 	public void Entrar_al_Salon_de_Pasajeros(String NombrePasajero) {
 		try {
-			this.semSalonDePasajeros_Productor.acquire(100);  
+			this.semSalonDePasajeros_Productor.acquire();  
 			this.mutexSalonDePasajeros.acquire();
 			this.SalonDePasajeros++;
 			System.out.println("El " + NombrePasajero + " ha entrado en el salón de pasajeros. (Pasajeros zona salon = "+SalonDePasajeros+")");
 			this.mutexSalonDePasajeros.release();
-			this.semCheckInPasajeros_Consumidor.release();  // aviso de que hay un hueco libre
+			this.semSalonDePasajeros_Consumidor.release();  // aviso de que hay un hueco libre
 		} catch (InterruptedException e) {
 			
 			e.printStackTrace();
@@ -98,24 +98,20 @@ public class Aeropuerto {
 	public void Acceder_al_Cheking_de_Pasajeros(String NombrePasajero) {
 		
 		// quito los que salen del salon
-			try {
-				this.semSalonDePasajeros_Consumidor.release();
-				this.mutexSalonDePasajeros.acquire();
-				this.SalonDePasajeros--;
-				System.out.println("El " + NombrePasajero + " sale del salón de pasajeros. (Pasajeros zona salon = "+SalonDePasajeros+")");
-				this.mutexSalonDePasajeros.release();
-				this.semSalonDePasajeros_Productor.release(100);  // aviso de los huecos libres
-			} catch (InterruptedException e) {
-				
-				e.printStackTrace();
-			}
+		try {
+			this.semSalonDePasajeros_Consumidor.acquire();
+			this.mutexSalonDePasajeros.acquire();
+			this.SalonDePasajeros--;
+			System.out.println("El " + NombrePasajero + " sale del salón de pasajeros. (Pasajeros zona salon = "+SalonDePasajeros+")");
+			this.mutexSalonDePasajeros.release();
+			this.semSalonDePasajeros_Productor.release(1);  // aviso de los huecos libres
 			
 		
 		
-		try {
+		
 			this.semCheckInPasajeros_Productor.acquire(6);
 			this.mutexChekingDePasajeros.acquire();
-			this.ChekingDePasajeros+=6;
+			this.ChekingDePasajeros += 6;
 			System.out.println("El " + NombrePasajero + " ha accedido al cheking de pasajeros. (Pasajeros zona cheking = "+ChekingDePasajeros+")");
 			this.mutexChekingDePasajeros.release();
 			this.semCheckInPasajeros_Consumidor.release();  // aviso de hueco libre
@@ -131,22 +127,19 @@ public class Aeropuerto {
 	//Método que permitirá al pasajero acceder a la zona de control.
 	public void Acceder_al_Control_de_Pasajeros(String NombrePasajero) {
 			// saco los que salen de la anterior sala
-				try {
-					this.semCheckInPasajeros_Consumidor.acquire();
-					this.mutexChekingDePasajeros.acquire();
-					this.ChekingDePasajeros--;
-					System.out.println("El " + NombrePasajero + " ha salido del cheking de pasajeros. (Pasajeros zona cheking = "+ChekingDePasajeros+")");
-					this.mutexSalonDePasajeros.release();
-					this.semCheckInPasajeros_Productor.release(6);  // aviso de los huecos libres
-				} catch (InterruptedException e) {
-					
-					e.printStackTrace();
-				}
+			try {
+				this.semCheckInPasajeros_Consumidor.acquire();
+				this.mutexChekingDePasajeros.acquire();
+				this.ChekingDePasajeros--;
+				System.out.println("El " + NombrePasajero + " ha salido del cheking de pasajeros. (Pasajeros zona cheking = "+ChekingDePasajeros+")");
+				this.mutexSalonDePasajeros.release();
+				this.semCheckInPasajeros_Productor.release(6);  // aviso de los huecos libres
 				
-		try {
+				
+		
 				this.semControlDePasajeros_Productor.acquire(3);
 				this.mutexControlDePasajeros.acquire();
-				this.ControlDePasajeros+=3;
+				this.ControlDePasajeros += 3;
 				System.out.println("El " + NombrePasajero + " ha entrado en el control de pasajeros. (Pasajeros zona control = "+ControlDePasajeros+")");
 				this.mutexControlDePasajeros.release();
 				this.semControlDePasajeros_Consumidor.release();
@@ -165,24 +158,17 @@ public class Aeropuerto {
 			try {
 					this.semControlDePasajeros_Consumidor.release();
 					this.mutexControlDePasajeros.acquire();
-					this.ControlDePasajeros-=3;
+					this.ControlDePasajeros -= 3;
 					System.out.println("El " + NombrePasajero + " ha salido de control de pasajeros. (Pasajeros zona control = "+ControlDePasajeros+")");
 					this.mutexControlDePasajeros.release();
-					this.semControlDePasajeros_Productor.acquire(3);
-			} catch (InterruptedException e) {
-				
-					e.printStackTrace();
-					}
-					
-		
-		
-			try {
+					this.semControlDePasajeros_Productor.release(3);
+			
 					this.semEmbarqueDePasajeros_Productor.acquire(100);
 					this.mutexEmbarqueDePasajeros.acquire();
 					this.EmbarqueDePasajeros += 100;
 					System.out.println("El " + NombrePasajero + " ha entrado a la zona de embarque de pasajeros. (Pasajeros zona embarque = "+EmbarqueDePasajeros+")");
 					this.mutexEmbarqueDePasajeros.release();
-					this.semControlDePasajeros_Productor.release(3);  // aviso de hueco libre
+					this.semEmbarqueDePasajeros_Consumidor.release();  // aviso de hueco libre
 				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -215,24 +201,13 @@ public class Aeropuerto {
 		try {
 			
 			this.semControlDeTripulacion_Consumidor.acquire();
-			
 			this.mutexControlDeTripulacion.acquire();
 			this.ControlDeTripulacion--;				// resto de control de tripulacion
 			this.mutexControlDeTripulacion.release();
-			
 			this.semControlDeTripulacion_Productor.release();   // aviso que hay un hueco libre
 		
 			
-		} catch (InterruptedException e) {
-			
-			e.printStackTrace();
-		}
-			
-		
-						
-		try {
 			this.semEmbarqueDeTripulacion_Productor.acquire();
-			
 			this.mutexEmbarqueDeTripulacion.acquire();
 			this.EmbarqueDeTripulacion++;
 			System.out.println("El " + NombreTripulante + " ha entrado a la zona de embarque de la tripulación. (Tripulantes zona embarque = "+EmbarqueDeTripulacion+")");
@@ -252,7 +227,7 @@ public class Aeropuerto {
 				try {
 					this.semEmbarqueDeTripulacion_Consumidor.acquire(4);
 					this.mutexEmbarqueDeTripulacion.acquire();
-					this.EmbarqueDeTripulacion =-4; // resto los que salen de embarque
+					this.EmbarqueDeTripulacion -=4; // resto los que salen de embarque
 					this.mutexEmbarqueDeTripulacion.release();
 					
 					this.semEmbarqueDeTripulacion_Productor.release(4);
@@ -270,9 +245,18 @@ public class Aeropuerto {
 	
 	//Método que permitirá a un vuelo embarcar al pasaje.
 	public void Embarcar_Pasajeros_Al_Vuelo(String NombreVuelo) {
-		
-				System.out.println("El " + NombreVuelo + " ha embarcado a 70 pasajeros. (Pasajeros zona embarque = "+EmbarqueDePasajeros+")");
-
+				try {
+					this.semEmbarqueDePasajeros_Consumidor.acquire(70);
+					this.mutexEmbarqueDePasajeros.acquire();
+					this.EmbarqueDePasajeros-=70;
+					System.out.println("El " + NombreVuelo + " ha embarcado a 70 pasajeros. (Pasajeros zona embarque = "+EmbarqueDePasajeros+")");
+					this.mutexEmbarqueDePasajeros.release();
+					this.semEmbarqueDePasajeros_Productor.release();
+				} catch (InterruptedException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
 	}
 	
 	
